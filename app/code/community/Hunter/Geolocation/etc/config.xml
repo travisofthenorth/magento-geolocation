@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <Hunter_Geolocation>
+            <version>1.0.0</version>
+        </Hunter_Geolocation>
+    </modules>
+    <global>
+        <helpers>
+            <geolocation>
+                <class>Hunter_Geolocation_Helper</class>
+            </geolocation>
+        </helpers>
+    </global>
+</config>
+
