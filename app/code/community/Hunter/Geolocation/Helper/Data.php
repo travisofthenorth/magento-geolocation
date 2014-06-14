@@ -27,6 +27,42 @@ class Hunter_Geolocation_Helper_Data extends Mage_Core_Helper_Abstract
     protected $_sessionRequestRegionKey = "sessionRegion";
     protected $_sessionRequestCityKey = "sessionCity";
 
+    /**
+     * Grab the country value stored in the session.
+     *
+     * @return string
+     */
+    public function getSessionCountry()
+    {
+        return Mage::getSingleton('core/session')->getData($this->_sessionRequestCountryKey);
+    }
+
+    /**
+     * Grab the region value stored in the session.
+     *
+     * @return string
+     */
+    public function getSessionRegion()
+    {
+        return Mage::getSingleton('core/session')->getData($this->_sessionRequestRegionKey);
+    }
+        
+    /**
+     * Grab the city value stored in the session.
+     *
+     * @return string
+     */
+    public function getSessionCity()
+    {
+        return Mage::getSingleton('core/session')->getData($this->_sessionRequestCityKey);
+    }
+
+    /**
+     * Initiates geolocation lookup, and stores the IP address on the session so that the 
+     * operation is only performed once.
+     *
+     * @param string $ipAddress
+     */
     public function setSessionIp($ipAddress)
     {
         $session = Mage::getSingleton('core/session');
@@ -53,24 +89,11 @@ class Hunter_Geolocation_Helper_Data extends Mage_Core_Helper_Abstract
         Mage::getSingleton('core/session')->setData($this->_sessionRequestCityKey, $city);
     }
 
-    public function getSessionCountry()
-    {
-        return Mage::getSingleton('core/session')->getData($this->_sessionRequestCountryKey);
-    }
-
-    public function getSessionRegion()
-    {
-        return Mage::getSingleton('core/session')->getData($this->_sessionRequestRegionKey);
-    }
-        
-    public function getSessionCity()
-    {
-        return Mage::getSingleton('core/session')->getData($this->_sessionRequestCityKey);
-    }
-
     /**
      * This function will request the location info from a webservice first, and then
-     * use the MaxMind database as a fallback
+     * use the MaxMind database as a fallback.
+     *
+     * @param string $ipAddress
      */
     private function lookupGeolocationForIp($ipAddress)
     {
@@ -80,28 +103,44 @@ class Hunter_Geolocation_Helper_Data extends Mage_Core_Helper_Abstract
         }
     }
 
-    // Request geolocation info from freegeoip.net
+    /**
+     * Request geolocation info from freegeoip.net. Returns true if successful, false otherwise.
+     *
+     * @param string $ipAddress
+     * @return boolean
+     */
     private function getFreeGeoIpLocationInfo($ipAddress)
     {
         try {
+            // GET it
             $response = file_get_contents("http://freegeoip.net/json/" . $ipAddress);
-            $json = json_decode($response, true);
-            $this->setSessionCountry($json['country_code']);
-            $this->setSessionRegion($json['region_code']);
-            $this->setSessionCity($json['city']);
+            if ($response != false) {
+                // Save it
+                $json = json_decode($response, true);
+                $this->setSessionCountry($json['country_code']);
+                $this->setSessionRegion($json['region_code']);
+                $this->setSessionCity($json['city']);
+                return true;
+            }
         } catch (Exception $e) {
-            return false;
+            // Uh-oh
         }
-        return true;
+        return false;
     }
 
-    // Lookup geolocation info in local MaxMind DB
+    /**
+     * Lookup geolocation info in local MaxMind DB. Returns true if successful, false otherwise.
+     *
+     * @param string $ipAddress
+     * @return boolean
+     */
     private function getMaxmindLocationInfo($ipAddress)
     {
         try {
+            // Init and query database
             $reader = new Reader($this->_dbPath);
             $record = $reader->city($ipAddress);
-
+            // Store in session
             $this->setSessionCountry($record->country->isoCode);
             $this->setSessionRegion($record->mostSpecificSubdivision->isoCode);
             $this->setSessionCity($record->city->name);
